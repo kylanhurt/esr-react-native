@@ -1,115 +1,99 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * Generated with the TypeScript template
- * https://github.com/react-native-community/react-native-template-typescript
- *
- * @format
- */
+const { Buffer } = require('safe-buffer')
+import React from 'react'
+import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity, Linking } from 'react-native'
+// import 'core-js'
+import { inspect } from 'util'
+import 'fastestsmallesttextencoderdecoder'
+import axios from 'axios'
+import { SigningRequest } from 'eosio-signing-request'
 
-import React from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const { TextEncoder, TextDecoder } = require('fastestsmallesttextencoderdecoder')
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+global.Buffer = Buffer
 
-const Section: React.FC<{
-  title: string;
-}> = ({children, title}) => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+export const getEsrOptions = (url: string) => {
+  console.log('getting ESR options')
+  return {
+    // string encoder
+    textEncoder: TextEncoder,
+    // string decoder
+    textDecoder: TextDecoder,
+    // zlib string compression (optional, recommended)
+    // Customizable ABI Provider used to retrieve contract data
+    abiProvider: {
+      getAbi: async account => {
+        console.log('account: ', account)
+        const { data } = await axios(`${url}/v1/chain/get_abi`, {
+          method: 'POST',
+          data: {
+            account_name: account
+          }
+        })
+        console.log('data: ', data)
+        return data.abi
+      }
+    }
+  }
+}
 
 const App = () => {
-  const isDarkMode = useColorScheme() === 'dark';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  const onPressIdentity = async () => {
+    const config = {
+      // you must register your app's deep linking for following callback to work!
+      callback: `myapp://identity?id={{sa}}`,
+      chainId: '4667b205c6838ef70ff7988f6e8257e8be0e1284a2f59699054a018f743b1d11',
+      account: '',
+      expire_seconds: 600,
+      name: 'identity',
+      authorization: [
+        {
+          actor: '............1',
+          permission: '............2'
+        }
+      ],
+      data: {
+        permission: {
+          actor: '............1',
+          permission: '............2'
+        }
+      }
+    }
+    console.log('identity request config: ', JSON.stringify(config))
+    const req1 = SigningRequest.identity(config, getEsrOptions('https://telos.caleos.io'))
+    console.log('req1 created: ', req1)
+    const encoded = req1.encode()
+    console.log('encoded: ', encoded)
+    console.log(inspect(req1, false, null, true))
+    const canOpen = await Linking.canOpenURL(encoded)
+    console.log('canOpen: ', canOpen)
+    Linking.openURL(encoded)
+  }
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity onPress={onPressIdentity} style={styles.identityWrap}>
+        <Text>Get Identity</Text>
+      </TouchableOpacity>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  identityWrap: {
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'gray',
+    width: 200,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+})
 
-export default App;
+export default App
